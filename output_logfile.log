@@ -29,10 +29,10 @@ Type 'q()' to quit R.
 > #
 > # Required data files (in data/):
 > #   - all_donors_dt.rds               | Contribution-level data with donor IDs
-> #   - spam_pac_directory.csv                 | Directory of identified spam PACs
+> #   - spam_pac_directory_final.csv           | Directory of identified spam PACs
 > #   - high_volume_vendor_spending_mat.csv    | Vendor spending matrix
-> #   - committee_summary_2025_year_end.csv    | FEC committee summary 
-> #   - candidate_summary_2025_year_end.csv    | FEC candidate summary 
+> #   - committee_summary_2025_year_end.csv    | FEC committee summary
+> #   - candidate_summary_2025_year_end.csv    | FEC candidate summary
 > #   - pascal_network_disb_codings_final.csv  | Pascal network disbursements
 > #   - comms_all_2018_2026.csv                | Committee summary panel
 > #   - cand_comm_directory.csv                | Candidates and Comms to Include
@@ -123,7 +123,7 @@ Type 'q()' to quit R.
 +       reprow <- rows[1,]
 +       reprow[,keep.cols] <- colSums(rows[,keep.cols],na.rm=T)
 +       adddups <- rbind(adddups,reprow)
-+     } 
++     }
 +   }
 +   hrv.mat <- hrv.mat[!(key %in% dups),]
 +   hrv.mat <- rbind(hrv.mat,adddups)
@@ -136,7 +136,7 @@ Type 'q()' to quit R.
 +   sp <- get_spam_pacs()
 +   non.spampac.vendors <- as.data.frame(hrv.mat[!(hrv.mat$bonica_rid %in% sp$bonica_rid),keep.cols])
 +   spampac.vendors <- as.data.frame(hrv.mat[hrv.mat$bonica_rid %in% sp$bonica_rid,keep.cols])
-+   vv <- colSums(spampac.vendors) 
++   vv <- colSums(spampac.vendors)
 + 
 +   has_spending <- rowSums(hrv.mat[grepl('cand',rownames(hrv.mat)), keep.cols]) > 10000
 +   cat(sprintf("  Candidates with HV vendor spending: %d of %d\n",
@@ -146,7 +146,7 @@ Type 'q()' to quit R.
 +   non.hv.cands <-names(has_spending[has_spending==FALSE])
 +   hv.cands.nocyc <- str_split_fixed(hv.cands,'_',2)[,1]
 +   # Manually verified high-volume vendor candidates
-+   
++ 
 + 
 +   non.hv.cands <- non.hv.cands[!(non.hv.cands %in% hv.cands)]
 +   hv.cands.cyc <- hv.cands
@@ -154,7 +154,7 @@ Type 'q()' to quit R.
 + 
 +   hv.cands <-  str_split_fixed(hv.cands,'_',2)[,1]
 +   non.hv.cands <-  str_split_fixed(non.hv.cands,'_',2)[,1]
-+   
++ 
 +   non.hv.cands <- non.hv.cands[!(non.hv.cands %in% hv.cands)]
 +   # non.hv.cands <- unique(non.hv.cands,manual_nhv)
 + 
@@ -181,19 +181,22 @@ Type 'q()' to quit R.
 + 
 +   sp_dt[, is_100plus := bonica_cid %in% hyper_donors]
 + 
-+ 
-+ 
 +   total_raised <- sum(sp_dt$amount, na.rm = TRUE)
 +   hyper_raised <- sum(sp_dt[is_100plus == TRUE]$amount, na.rm = TRUE)
 +   pct_donors   <- round(length(hyper_donors) / nrow(donor_counts) * 100, 2)
 +   pct_funds    <- round(hyper_raised / total_raised * 100, 2)
 + 
-+   pct_of_all_donors <- round((length(hyper_donors)/ length(unique(dt$bonica_cid)))*100,2)
++   num_hyper_donors <- length(hyper_donors)
++   num_all_donors <- dt[,uniqueN(bonica_cid)]
++   pct_of_all_donors <- round((num_hyper_donors/ num_all_donors)*100,3)
++ 
 + 
 +   cat(sprintf("  Total donations in database:           %s\n",   format(nrow(dt), big.mark = ",")))
++   cat(sprintf("  Total unique donors:                   %s\n",   format(num_all_donors, big.mark = ",")))
 +   cat(sprintf("  Spam PACs identified:                  %d\n\n", nrow(sp_pacs)))
 +   cat(sprintf("  Total Raised by Spam PACs              $%.1fm\n\n", total_raised/1e6))
 +   cat(sprintf("  Donors who gave 100+ times to spam PACs:\n"))
++   cat(sprintf("    Count:                     %s\n",   format(num_hyper_donors, big.mark = ",")))
 +   cat(sprintf("    Total raised:              $%.1fm\n",   hyper_raised / 1e6))
 +   cat(sprintf("    Share of all spam donors:  %.2f%%\n",   pct_donors))
 +   cat(sprintf("    Share of all spam funds:   %.2f%%\n\n", pct_funds))
@@ -205,15 +208,13 @@ Type 'q()' to quit R.
 > 
 > 
 > # =============================================================================
-> # 2. Candidate/Vendor 
+> # 2. Candidate/Vendor
 > # =============================================================================
 > 
 > compute_candidate_vendor_overlap <- function(dt, hvv_cands, donor_counts, thresh = 10000) {
 + 
 +   dt <- dt[amount <= thresh & seat %in% c('federal:house','federal:senate')]
 +   dt <- dt[ seat %in% c('federal:house','federal:senate')]
-+ 
-+   dt[,bonica_rid_cyc := stri_paste(bonica_rid,'_',cycle)]
 + 
 +   hyper_donors        <- donor_counts[tx_count >= 100, bonica_cid]
 +   hyper_donors_10plus <- donor_counts[tx_count >= 10, bonica_cid]
@@ -278,7 +279,7 @@ Type 'q()' to quit R.
 +   pct_amt_sp      <- round((sp_amount / total_amount) * 100, 1)
 +   pct_amt_hyper   <- round((hyper_amount / total_amount) * 100, 1)
 + 
-+   
++ 
 +   section_header(sprintf("%s (%s)", label, brid))
 +   cat(sprintf("  Cycles %d-%d, donations <= $%s\n",
 +               min(cycle_range), max(cycle_range), format(thresh, big.mark = ",")))
@@ -344,7 +345,7 @@ Type 'q()' to quit R.
 +   dc_ind    <- sum(dc$INDV_CONTB, na.rm = TRUE)
 +   dc_unitem <- sum(dc$INDV_UNITEM_CONTB, na.rm = TRUE)
 + 
-+   
++ 
 + 
 +   cat(sprintf("  %-20s %-18s %s\n", "Source", "All Individual", "Unitemized"))
 +   cat(sprintf("  %s\n", paste(rep("-", 52), collapse = "")))
@@ -423,7 +424,7 @@ Type 'q()' to quit R.
 +                                 by = aggregate_category]
 +   spend_summary <- as.data.frame(spend_summary)
 + 
-+   fund.am <- spend_summary[spend_summary$aggregate_category == 'FUNDRAISING','amount']  
++   fund.am <- spend_summary[spend_summary$aggregate_category == 'FUNDRAISING','amount']
 +   spend_summary[spend_summary$aggregate_category == 'FUNDRAISING','amount'] <- fund.am + total_refunds
 +   spend_summary <- rbind(spend_summary,
 +     data.frame(aggregate_category = "CONTRIBS AND IE",
@@ -445,13 +446,22 @@ Type 'q()' to quit R.
 > 
 > 
 > # =============================================================================
-> # 8. Calculate Donation Counts for Spam PACs 
+> # 8. Calculate Donation Counts for Spam PACs
 > # =============================================================================
 > calc_sp_donation_counts <- function(all_donors_dt,sp){
 +   sp.count <- all_donors_dt[bonica_rid %in% sp$bonica_rid,.(donation_count=.N),by=bonica_rid][order(-donation_count)]
 +   cc_use <- fread('data/cand_comm_directory.csv')
 +   sp.count[cc_use, on = .(bonica_rid = bonica.rid), Name := i.name]
 +   write.csv(sp.count[1:20,],file='output/spam_pac_donation_count_bubble_chart.csv')
++ 
++   # Print share of total spam PAC donations from top 17
++   top17_donations <- sp.count[1:17, sum(donation_count)]
++   total_donations <- sp.count[, sum(donation_count)]
++   pct <- round(100 * top17_donations / total_donations, 1)
++   cat(sprintf("Top 17 spam PACs: %s of %s total itemized donations (%.1f%%)\n",
++               format(top17_donations, big.mark = ","),
++               format(total_donations, big.mark = ","),
++               pct))
 + }
 > 
 > 
@@ -497,7 +507,7 @@ Type 'q()' to quit R.
 ===========================================================================
 
 > hv.out <- get_hvv_cands()
-  Candidates with HV vendor spending: 1483 of 6984
+  Candidates with HV vendor spending: 1477 of 6984
 > 
 > 
 > # =============================================================================
@@ -513,11 +523,13 @@ Type 'q()' to quit R.
 
 > donor_counts <- compute_macro_ecosystem_stats(all_donors_dt, sp, thresh = 10000)
   Total donations in database:           324,937,714
+  Total unique donors:                   17,605,227
   Spam PACs identified:                  145
 
   Total Raised by Spam PACs              $1426.7m
 
   Donors who gave 100+ times to spam PACs:
+    Count:                     138,074
     Total raised:              $628.7m
     Share of all spam donors:  2.86%
     Share of all spam funds:   44.07%
@@ -535,8 +547,8 @@ Type 'q()' to quit R.
 > ccvo.out <- compute_candidate_vendor_overlap(all_donors_dt, hv.out, donor_counts)
   Donations from 100+ spam PAC donors to candidates, by vendor type:
 
-    To candidates USING HV vendors:     $570.39m
-    To candidates NOT using HV vendors:  $36.61m
+    To candidates USING HV vendors:     $570.25m
+    To candidates NOT using HV vendors:  $36.75m
 
 > 
 > # --- 3. Jeffries donor profile ---
@@ -660,33 +672,33 @@ Type 'q()' to quit R.
 
 > 
 > # --- 7. Pascal Spending Summary ---
-> section_header("7. Pascal Network Spending Breakdown (2017-2025)")
+> section_header("7. Pascal Network Spending Breakdown (2015-2025)")
 
 ===========================================================================
-  7. Pascal Network Spending Breakdown (2017-2025)
+  7. Pascal Network Spending Breakdown (2015-2025)
 ===========================================================================
 
 > compute_pascal_network_financials()
-  FEC committee summary totals (8 PACs):
+  FEC committee summary totals (9 PACs):
   Disbursement breakdown:
   Category                       Amount           Share
   -------------------------------------------------------
-  ORGANIZING                     $50,577,955     12.9%
-  FUNDRAISING                    $249,984,537    63.8%
-  ADMINISTRATIVE                 $20,256,900     5.2%
-  PAYROLL                        $50,253,349     12.8%
-  CONTRIBS AND IE                $20,776,528     5.3%
+  FUNDRAISING                    $249,899,414    63.8%
+  ORGANIZING                     $51,072,348     13.0%
+  PAYROLL                        $50,545,847     12.9%
+  ADMINISTRATIVE                 $19,555,132     5.0%
+  CONTRIBS AND IE                $20,787,978     5.3%
 
   aggregate_category    amount   pct
-1         ORGANIZING  50577955 0.129
-2        FUNDRAISING 249984537 0.638
-3     ADMINISTRATIVE  20256900 0.052
-4            PAYROLL  50253349 0.128
-5    CONTRIBS AND IE  20776528 0.053
+1        FUNDRAISING 249899414 0.638
+2         ORGANIZING  51072348 0.130
+3            PAYROLL  50545847 0.129
+4     ADMINISTRATIVE  19555132 0.050
+5    CONTRIBS AND IE  20787978 0.053
 > 
 > # --- 8. Donation count to largest spam pacs ---
 > calc_sp_donation_counts(all_donors_dt,sp)
-> 
+Top 17 spam PACs: 56,325,641 of 80,285,717 total itemized donations (70.2%)
 > 
 > cat("\n  Done.\n")
 
@@ -694,4 +706,4 @@ Type 'q()' to quit R.
 > 
 > proc.time()
    user  system elapsed 
-135.339  14.952 124.056 
+130.884  10.239 101.435 

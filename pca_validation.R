@@ -2,18 +2,18 @@
 # PCA Validation of the Spam PAC Directory
 # =============================================================================
 #
-# This script validates the manually coded spam PAC directory (144 PACs) using
+# This script validates the manually coded spam PAC directory (145 PACs) using
 # principal component analysis. It also applies a set of rule-based diagnostic
 # checks to compare the manual directory against a fully data-driven classification.
 #
 # Required data files (in data/):
 #   - spam_pac_indicators_for_pca.csv  | Indicator matrix for all PACs and candidates
-#   - spam_pac_directory_final.csv     | Manual spam PAC directory (144 PACs)
+#   - spam_pac_directory_final.csv     | Manual spam PAC directory (145 PACs)
 #
 # Outputs:
 #   - Correlation matrix, PCA summary, and leave-one-out robustness (stdout)
 #   - Rule-based classification diagnostics (stdout)
-#   - Three-category breakdown: Manual (144), Rule-Based Addition, Non-Spam (stdout)
+#   - Three-category breakdown: Manual (145), Rule-Based Addition, Non-Spam (stdout)
 #   - figs/pca_scree.png                | Variance explained by component
 #   - figs/pca_loadings.png             | PC1 loadings bar chart
 #   - figs/pca_indicators_jitter.png    | Indicator distributions (3 categories)
@@ -181,7 +181,7 @@ check4 <- with(indicators, ifelse(
     pc1 >= quantile(pc1, probs = 0.5), 1L, 0L))
 
 # Combined: must pass (check1 OR check2) AND check3 AND check4
-full <- ifelse(check1 == 1 | check2 == 1 & check3 == 1 & check4 == 1, 1L, 0L)
+full <- ifelse((check1 == 1 | check2 == 1) & check3 == 1 & check4 == 1, 1L, 0L)
 fundraising_model <- ifelse(check1 == 1 | check2 == 1, 1L, 0L)
 
 spam   <- indicators[indicators$is_spam_pac_manual == 1, ]
@@ -264,22 +264,19 @@ cat(sprintf("  Manual only (below threshold):    %d PACs\n", n_manual_only))
 cat(sprintf("  Rule-based only (new additions):  %d PACs\n", n_rule_only))
 
 # --- Three-category classification ---
-# Used for all plots: Manual (144), Rule-Based Addition, Non-Spam
 df_comm$is_rule_based_addition <- as.integer(full == 1 & indicators$is_spam_pac_manual == 0)
+manual_label <- sprintf("Manual Spam PAC (%d)", n_spam)
 
 df_comm$spam_category <- factor(
-    ifelse(df_comm$is_spam_pac_manual == 1, "Manual Spam PAC (144)",
+    ifelse(df_comm$is_spam_pac_manual == 1, manual_label,
     ifelse(df_comm$is_rule_based_addition == 1, "Rule-Based Addition",
            "Non-Spam PAC")),
-    levels = c("Non-Spam PAC", "Rule-Based Addition", "Manual Spam PAC (144)")
+    levels = c("Non-Spam PAC", "Rule-Based Addition", manual_label)
 )
 
 # Color palette for three categories
-cat_colors <- c(
-    "Non-Spam PAC"           = "#457B9D",
-    "Rule-Based Addition"    = "#F4A261",
-    "Manual Spam PAC (144)"  = "#E63946"
-)
+cat_colors <- setNames(c("#457B9D", "#F4A261", "#E63946"),
+                       c("Non-Spam PAC", "Rule-Based Addition", manual_label))
 
 cat(sprintf("\n  Three-category breakdown:\n"))
 print(table(df_comm$spam_category))
@@ -436,7 +433,7 @@ p_jitter <- ggplot(df_plot, aes(x = spam_category, y = value, color = spam_categ
     facet_wrap(~ indicator, scales = "free_y", ncol = 3) +
     scale_color_manual(values = cat_colors) +
     labs(title    = "Indicator Distributions by Classification",
-         subtitle = "Manual directory (144 PACs) vs. rule-based additions vs. non-spam PACs",
+         subtitle = sprintf("Manual directory (%d PACs) vs. rule-based additions vs. non-spam PACs", n_spam),
          x = NULL, y = "Indicator Value", color = "Classification") +
     theme_minimal() +
     theme(legend.position = "bottom",
@@ -481,7 +478,7 @@ p_logistic <- ggplot() +
     geom_jitter(data = df_comm[df_comm$spam_category == "Rule-Based Addition", ],
                 aes(x = pc1, y = y_jit, color = spam_category),
                 height = 0.04, width = 0, alpha = 0.65, size = 2.5) +
-    geom_jitter(data = df_comm[df_comm$spam_category == "Manual Spam PAC (144)", ],
+    geom_jitter(data = df_comm[df_comm$spam_category == manual_label, ],
                 aes(x = pc1, y = y_jit, color = spam_category),
                 height = 0.04, width = 0, alpha = 0.65, size = 2.5) +
     scale_color_manual(values = cat_colors) +

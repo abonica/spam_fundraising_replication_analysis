@@ -10,7 +10,7 @@
 #
 # Required data files (in data/):
 #   - all_donors_dt.rds               | Contribution-level data with donor IDs
-#   - spam_pac_directory.csv                 | Directory of identified spam PACs
+#   - spam_pac_directory_final.csv           | Directory of identified spam PACs
 #   - high_volume_vendor_spending_mat.csv    | Vendor spending matrix
 #   - committee_summary_2025_year_end.csv    | FEC committee summary
 #   - candidate_summary_2025_year_end.csv    | FEC candidate summary
@@ -539,7 +539,7 @@ section_header("6. Fundraising Totals Comparison (2026 cycle, $millions)")
 comp_totals <- compute_cycle_totals_by_group()
 
 # --- 7. Pascal Spending Summary ---
-section_header("7. Pascal Network Spending Breakdown (2017-2025)")
+section_header("7. Pascal Network Spending Breakdown (2015-2025)")
 compute_pascal_network_financials()
 
 # --- 8. Donation count to largest spam pacs ---

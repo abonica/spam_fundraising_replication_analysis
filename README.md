@@ -27,13 +27,13 @@ The main replication script `spam_pac_replication.R` reproduces every empirical 
 |---|---|
 | `all_donors_dt.rds` | Contribution-level data with DIME donor IDs (`bonica_cid`) and recipient IDs (`bonica_rid`), covering all FEC individual contributions in the analysis window. **3.45 GB** — too large for the GitHub repo, so the script downloads it automatically on first run and caches it to `data/`. |
 | `spam_pac_directory_final.csv` | The directory of identified spam PACs, mapping DIME recipient IDs to FEC committee IDs. |
-| `high_volume_vendor_spending_mat.csv` | Matrix of disbursements to high-volume fundraising vendors, by recipient and cycle. Used to flag candidates whose campaigns rely on the same vendor infrastructure as the spam PAC ecosystem. |
+| `high_volume_vendor_spending_mat.csv` | Matrix of disbursements to high-volume fundraising vendors, by recipient and cycle. Used to flag candidates whose campaigns rely on the same vendor infrastructure as the spam PAC ecosystem. Note: this matrix and the `hvv_total` column in `spam_pac_indicators_for_pca.csv` were built from different vendor lists and do not reconcile exactly; the replication script uses only the matrix, and only for the candidate flag in section 2. |
 | `pascal_network_disb_codings_final.csv` | All 50,000+ itemized Pascal-network disbursements with vendor, purpose description, amount, and final hand-coded category. |
 | `committee_summary_2025_year_end.csv`, `candidate_summary_2025_year_end.csv` | FEC committee and candidate summary snapshots (year-end 2025) for top-line fundraising totals. |
 | `comms_all_2018_2026.csv` | Long-form panel of FEC committee summary filings, used for the Pascal-network IE and contribution totals. |
 | `cand_comm_directory.csv` | Directory mapping DIME IDs to candidate and committee names. |
 | `donor_age_aggregate.csv`, `donor_age_aggregate_by_cycle.csv` | Donor age distributions, pre-aggregated to recipient × age and recipient × cycle × age. (Individual-level voter-file ages are not redistributed; the aggregations are sufficient for every figure in the piece.) |
-| `spam_pac_indicators_for_pca.csv` | Indicator matrix for all PACs and candidates, used by the PCA validation script (`pca_validation.R`). Contains the eight indicators described in Section 5 for every federal PAC and candidate in the analysis window. |
+| `spam_pac_indicators_for_pca.csv` | Indicator matrix used by the PCA validation script (`pca_validation.R`). Contains the eight indicators described in Section 5 for every federal PAC in the analysis window with at least 500 unique donors (662 rows). One spam PAC, Moms Fed Up, is a converted candidate committee and carries the DIME candidate ID `cand1029`; its row is included. The script uses the eight indicator columns plus `pct_overall_either_100n_10d` and `hvv_total`; the remaining columns (e.g. `political_spending_pct`, `cand_support_pct`) are auxiliary outputs of the upstream DIME pipeline, are not used here, and are not documented. |
 
 **What the script produces**
 
@@ -65,7 +65,7 @@ source("pca_validation.R")
 
 ## 3. Coding Pascal-Network Disbursements
 
-For the Pascal network — eight PACs that share infrastructure (Progressive Turnout Project, Stop Republicans, Stop Trump, Democracy First PAC, Dem Turnout 2024, Dem Turnout 2026, Progressive Takeover, and Turnout the Vote IE PAC) — every itemized FEC disbursement was hand-classified into one of six categories: Fundraising, Organizing, Payroll, Administrative, Contributions/IE, and Refunds. The Contributions/IE and Refunds categories are determined by FEC transaction type; the other four require coding.
+For the Pascal network — nine FEC committee IDs that share infrastructure (Progressive Turnout Project, Stop Republicans, Stop Trump, Democracy First PAC, Dem Turnout 2024, Dem Turnout 2026, Progressive Takeover, Turnout the Vote IE PAC, and an earlier Turnout PAC committee, C00622175, which accounts for four line items) — every itemized FEC disbursement was hand-classified into one of six categories: Fundraising, Organizing, Payroll, Administrative, Contributions/IE, and Refunds. The Contributions/IE and Refunds categories are determined by FEC transaction type; the other four require coding.
 
 The full file of 50,000+ line items, with the original vendor, purpose description, amount, and the assigned category for each row, is `pascal_network_disb_codings_final.csv` (also available as a [Google Sheet](https://docs.google.com/spreadsheets/d/1JvKtz4Eotqi6h4KmWuco-Bjbm2WPFvSkI0Ckon5Km6o/edit)). Any reader can verify any individual coding decision.
 
@@ -90,13 +90,13 @@ This biases the Organizing total upward — it represents an upper bound on what
 
 | Category | Amount |
 |---|---|
-| Fundraising | $249M |
-| Organizing | $50M |
-| Payroll | $50M |
+| Fundraising | $250M |
+| Organizing | $51M |
+| Payroll | $51M |
 | Administrative | $20M |
-| Contributions / IE | $20M |
+| Contributions / IE | $21M |
 
-Total raised over the period: approximately $390M. Only Progressive Turnout Project itself conducts any direct organizing or voter-contact work; the other seven entities in the network function essentially as fundraising vehicles, with their receipts either transferred to PTP or spent on additional fundraising operations.
+Total raised over the period: approximately $390M. Only Progressive Turnout Project itself conducts any direct organizing or voter-contact work; the other entities in the network function essentially as fundraising vehicles, with their receipts either transferred to PTP or spent on additional fundraising operations.
 
 ## 4. Estimating Donor Ages via Voter File Linkage
 
@@ -122,7 +122,7 @@ The validation works as follows. For every federal PAC active since 2017 with at
 - `pct_65_plus` — share of donations from donors estimated to be 65 or older. Paired with `mean_age` because the two capture different parts of the age distribution.
 - `pct_overall_donations_100plus` — share of a PAC's donations coming from donors who have made 100 or more contributions to any federal candidate or committee. This measures the concentration of hyper-frequent givers in a PAC's donor base, independent of the spam PAC list itself.
 - `pct_overall_donations_10plus_distinct` — share of a PAC's donations coming from donors who have given to 10 or more distinct federal committees. Same construction, lower threshold; captures heavily solicited donors who haven't yet reached the hyper-frequent tier.
-- `high_volume_vendor_pct` — share of total disbursements paid to firms specializing in high-volume, small-dollar digital fundraising (Mothership Strategies, Sapphire Strategies, Switchboard, MissionWired, Liftoff Campaigns, Message Digital, and a number of others). The vendor list was constructed conservatively: a firm is included only if (a) independent research confirmed it engages in high-volume digital fundraising and (b) it appears in disbursement records for already-flagged spam PACs.
+- `high_volume_vendor_pct` — share of total disbursements paid to firms specializing in high-volume, small-dollar digital fundraising (Mothership Strategies, Sapphire Strategies, Switchboard, MissionWired, Liftoff Campaigns, Message Digital, and a number of others). The vendor list was constructed conservatively: a firm is included only if (a) independent research confirmed it engages in high-volume digital fundraising and (b) it appears in disbursement records for already-flagged spam PACs. The full list used for the candidate flag is the set of vendor columns in `high_volume_vendor_spending_mat.csv`. (The archived Pascal codings file carried a separate hand-coded `high_volume_vendor` flag that included Blue State Digital; that flag is specific to the Pascal disbursements and is not the list used here.)
 - `fundraising_inefficiency` — fundraising and operational costs divided by total individual contributions. Individual contributions are used as the denominator (rather than total receipts) because PAC-to-PAC transfers do not require the fundraising vendor infrastructure that drives these costs. For comparison, the Better Business Bureau's Wise Giving Alliance standard for charities is no more than 35 cents on the dollar.
 - `log_hvv_total` — log-transformed total spending on high-volume fundraising vendors. Captures the absolute scale of vendor engagement in addition to the share.
 - `log_n_refunds` — log-transformed count of donor refunds. Elevated refund volumes indicate donors being charged in ways they didn't expect — repeat donors discovering recurring charges they didn't authorize, family members reversing transactions, etc.
@@ -133,17 +133,27 @@ The eight indicators are combined using principal component analysis. The first 
 
 ![Logistic fit of manual spam PAC classification on PC1 scores. Manually identified spam PACs (red) cluster at high PC1 values; non-spam PACs (blue) cluster at low values. The transition between the two classes is sharp.](figs/pca_classification.png)
 
-The fitted logistic model implies a classification threshold: PACs whose predicted probability of being a spam PAC exceeds the cutoff are flagged, those below are not. Applying that threshold to the full PAC universe partitions the directory into two groups:
+The fitted logistic model implies a classification threshold: PACs whose predicted probability of being a spam PAC exceeds the cutoff are flagged, those below are not. The rule-based directory itself is produced by the diagnostic checks in `pca_validation.R` (donor saturation or fundraising structure, donor age above 66% aged 65+, and PC1 above the PAC median); the logistic fit is the visual summary of the same separation. Applying those checks to the full PAC universe partitions the directory into two groups:
 
-- **All 145 manually coded PACs** clear the threshold. The indicator profile and the manual coding fully agree.
-- **172 PACs not in the manual list** also clear the threshold. These are mostly newer entrants and smaller operations that didn't surface in the October 2025 sweep but match the spam profile on the indicators.
+- **143 of the 145 manually coded PACs** clear the threshold.
+- **173 PACs not in the manual list** also clear the threshold. These are mostly newer entrants and smaller operations that didn't surface in the October 2025 sweep but match the spam profile on the indicators.
 
-The PACs above the threshold combined yield the fully rule-based directory of **317 PACs** (145 manual ∩ rule-based + 172 rule-based only). For the results in the article, it makes essentially no difference whether the manual or rule-based directory is used. The reason is concentration: the core set of large spam PACs accounts for **over 98% of total spam PAC donation activity**. The 172 additional rule-based PACs are real but each is a small fraction of the ecosystem; including or excluding them moves the reported estimates by at most a percentage point or two.
+The PACs above the threshold combined yield the fully rule-based directory of **316 PACs** (143 manual ∩ rule-based + 173 rule-based only). For the results in the article, it makes essentially no difference whether the manual or rule-based directory is used. The reason is concentration: the core set of large spam PACs accounts for **over 98% of total spam PAC donation activity**. The 173 additional rule-based PACs are real but each is a small fraction of the ecosystem; including or excluding them moves the reported estimates by at most a percentage point or two.
 
 Two robustness points matter for interpreting this:
 
 1. **The aggregation method does not drive the result.** Because the indicators are highly correlated, a simple additive index over standardized indicators produces nearly the same ranking as PCA.
 2. **The model is robust to dropping any single indicator.** Removing any one indicator and re-fitting the PCA yields essentially the same separation between hand-coded spam PACs and the rest. The replication archive includes a drop-one-indicator analysis demonstrating this. (For this reason the high-volume vendor list — the only indicator built on judgment calls about specific firms — is not analytically necessary. The validation holds with or without it, and none of the vendors are named in the article's quantitative claims.)
+
+## Revisions
+
+**September 2026.** Changes since the May 2026 archive, prompted in part by an external review:
+
+1. The Middle Seat column in `high_volume_vendor_spending_mat.csv` had been inflated by a factor of three by a duplicated name match in the vendor pipeline; the column is divided by three (total $379.8M to $126.6M). No other column or row changed. This moves six candidate-cycles below the $10K flag threshold and shifts the section 2 split of hyper-donor giving to candidates using high-volume vendors versus those not using them from $570.4M / $36.6M to $570.3M / $36.8M.
+2. A missing pair of parentheses in the rule-based classification in `pca_validation.R` caused the OR to bind incorrectly; the rule-based directory is 316 PACs, not 381. Figures regenerated.
+3. `pascal_network_disb_codings_final.csv`: 769 line items recoded after further review, and four Turnout PAC line items reassigned from `C00806521` to `C00622175`. The section 7 table reflects the current codings.
+4. The indicator row for Moms Fed Up (`cand1029`) was restored to `spam_pac_indicators_for_pca.csv`, so the PCA script now sees all 145 manual PACs.
+5. `output_logfile.log` regenerated from the shipped script and data.
 
 ## Citation
 

@@ -1,2 +1,4 @@
 data/all_donors_dt.rds
-data/all_donors_dt.rds
+.DS_Store
+*.zip
+*_bk.csv
